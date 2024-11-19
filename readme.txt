@@ -1,0 +1,7 @@
+
+user:admin@email.com
+pass:admin
+{
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTczMzIxMzEzMiwiaWF0IjoxNzMyMDAzNTMyLCJqdGkiOiJiMmI1OGNhOGM5MWE0YWI1OTRjMjRjNzNkMGY2OWM0OSIsInVzZXJfaWQiOjF9.Csz0cvyXvLIhPuJLozI8ub64AFgg6FCrOGwxgoOz8rA",
+    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMyMDg5OTMyLCJpYXQiOjE3MzIwMDM1MzIsImp0aSI6ImZhMTEwMmFjYTFmMzQ1ZDliMzJhMjBkYWQyMWQ2YmQ0IiwidXNlcl9pZCI6MX0.R8cq11WN5w1uhdNvJMf--aePHPTzao1dZZXK84ob8DI"
+}
