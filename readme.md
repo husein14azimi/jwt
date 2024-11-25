@@ -1,14 +1,9 @@
 <br></br>
-<p style="text-align:center;">
+<p align="center">
 IN THE NAME OF GOD
 </p>
 
-<p align="center">
-lorem ipsum
-</p>
 
-
-<br></br>
 <br></br>
 
 # jwt project 💻
