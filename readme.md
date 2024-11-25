@@ -1,3 +1,11 @@
+<br></br>
+<p style="text-align:center;">
+IN THE NAME OF GOD
+</p>
+
+<br></br>
+<br></br>
+
 # jwt project 💻
 
 this is a simple django project with two web applications:
@@ -8,15 +16,16 @@ this is a simple django project with two web applications:
 
 technologies used in the project:
 * RESTful apis
-* (authentication): jwt (as the authenticatoin backend) and djoser (for pre-written views and urls)
+* (Authentication): `jwt` (as the authenticatoin backend) and `djoser` (for pre-written `views` and `urls`)
+* (dev environment:) Visual Studio Code on Windows
 
 
 
 # creating this project, step by step:
 
-create a project named `core` and then rename the project to whatever you like. tenaming the project is easier than renaming the main application of the project.
+create a project named `core` and then rename the project to whatever you like. renaming the project is easier than renaming the main application of the project.
 
-**note:** in some code snippets, the full content of the file is typed; but in some cases (such as `settings.py`), only the code that should be modified is typed.
+**note:** in this doc, in each file's code snippet, the full content of the file is typed; but in some cases (such as `settings.py`), only the code that should be modified is there.
 
 #### editing the `core.settings`
 
@@ -34,7 +43,7 @@ INSTALLED_APPS = [
     'core',
 ]
 ```
-if you're working with local host, write:
+if you're working on local host, write:
 ```
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost',]
 ```
@@ -46,7 +55,7 @@ TIME_ZONE = 'Asia/Tehran'
 
 
 ### virtual environment
-virtual environment is dependent on the address of its directory; that's why it is created after renaming the project.
+virtual environment is dependent on the address of its directory; that's why it is created after renaming the project. change `<the_name>` to your desired name:
 
 ```
 python -m venv <the_name>
@@ -285,7 +294,7 @@ SIMPLE_JWT = {
 }
 ```
 
-you can set some further settings:
+or if you want more customized settings:
 ```
 # core.settings
 
@@ -293,14 +302,16 @@ from datetime import timedelta
 
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=14),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=3),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
 }
 ```
 
+i just thought that access token must be valid for 3 days. you can change it there 👆.
 
 
-**map:** the `core.User` and auth configuration is implemented. now, we implement the person model.
+
+**map:** the `core.User` and auth configuration is implemented. now, we implement the `person`(profile) model.
 
 **note:** to get the current user's data, use the url `auth/users/me`.
 ```
@@ -310,7 +321,7 @@ localhost:8000/auth/users/me/
 **note:** you can get your `access` and `refresh` tokens using the url `auth/jwt/create`. to refresh the access token, use the url `auth/jwt/refresh` along with your **refresh token**. 
 
 
-## `account` app and `Person` model (profile)
+## `account` app and `Person` (profile) model
 
 run:
 ```
@@ -397,113 +408,17 @@ from .models import Person
 admin.site.register(Person)
 ```
 
-run the migrations afterwise
+run the migrations afterwise.
 
 
-**note:** for now, we implement a temporary `serializer` and `view` to find out if the person model works.
-
-create the `serializer`:
-
-```
-# account.serializers
-
-from rest_framework import serializers
-from .models import Person
+**note:** 
+the following serializer is a complex serializer that combines the `User` and `Person` models. how? well, first it fetches the `User` data from the main app and then, combines it with the `Person` model.
 
 
-class PersonSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Person
-        fields = ['bio', 'gender', 'updated_at', 'birth_date',]
-```
-
-write the `view`:
-
-```
-# account.views
-
-from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from .models import Person
-from .serializers import PersonSerializer
-
-class PersonViewSet(viewsets.ModelViewSet):
-    queryset = Person.objects.all()
-    serializer_class = PersonSerializer
-    
-    @action(detail=False)
-    def me(self, request):
-        return Response(PersonSerializer(Person.objects.filter(user_id=request.user.id).first()).data)
-```
-
-about the `me` action: this funtion returns the profile associated with the user model. therefore, the url `<site-address>/account/persons/me` returns the user's profile in a rest response.
+write the needed serializer-view-url:
 
 
 
-set the `url`:
-
-```
-# account.urls
-
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import PersonViewSet
-
-router = DefaultRouter()
-router.register(r'persons', PersonViewSet)
-
-urlpatterns = [
-    path(r'', include(router.urls)),
-]
-```
-
-you can now create a `Person` model (profile) for the admin user you created before to test if the project works so far.
-
-**map:** for now, maybe there is no profile associated with the current user. the next part (signals) takes care of that so when a user model is created, a profile model associated to it is automatically created.
-
-## connecting the `User` and `Person` models
-
-in the `account` app, write in the `signals` file:
-
-```
-# account.signals
-
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.conf import settings
-from .models import Person
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_person(sender, instance, created, **kwargs):
-    if created:
-        Person.objects.create(user=instance)
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def save_person(sender, instance, **kwargs):
-    instance.person.save()
-```
-
-to get this `signal` run automatically, get it in the ready state:
-
-```
-# account.apps
-
-from django.apps import AppConfig
-
-
-class AccountConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'account'
-
-    def ready(self) -> None:
-        import account.signals
-```
-
-**map:** now, each time a `User` model is created, a `Person` (profile) model connected to it is created. the current problem is updating these two models' data. two different `serializers` and `views` are needed to update these two models. we gather the work in one `serializer`-`view`. three entities needed:
-1. a `serializer` in the `account` app that fetches the data of the `user` model associated with the `person` model
-2. a `view` that receives this data from the `serializer`
-3. a `url` pointing to the `view`
-
-then these files in the `account` will be updated:
 ```
 # account.serializers
 
@@ -542,6 +457,8 @@ class CombinedUserPersonSerializer(serializers.ModelSerializer):
 
 
 
+
+
 ```
 # account.views
 
@@ -574,6 +491,10 @@ class CombinedUserProfileViewSet(RetrieveModelMixin, UpdateModelMixin, viewsets.
             return Response(serializer.data)
 ```
 
+about the `me` action👆: this funtion returns the profile associated with the user model. therefore, the url `<site-address>/account/persons/me` returns the user's profile in a rest response.
+
+
+
 ```
 # account.urls
 
@@ -588,6 +509,61 @@ urlpatterns = [
     path(r'', include(router.urls)),
 ]
 ```
+
+
+
+
+
+
+
+
+
+**map:** both the profile and user models and their configurations are implemented; but they are not connected together. the next part (signals) takes care of that so when a user model is created, a profile model associated to it is automatically created. (this means that the `Person` and `User` models had to be connected manually before)
+
+## connecting the `User` and `Person` models
+
+in the `account` app, write in the `signals` file:
+
+```
+# account.signals
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.conf import settings
+from .models import Person
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_person(sender, instance, created, **kwargs):
+    if created:
+        Person.objects.create(user=instance)
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def save_person(sender, instance, **kwargs):
+    instance.person.save()
+```
+
+to get this `signal` run automatically, get it in the ready state:
+
+```
+# account.apps
+
+from django.apps import AppConfig
+
+
+class AccountConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'account'
+
+    def ready(self) -> None:
+        import account.signals
+```
+
+
+
+
+
+
+
+
+
 
 
 **map:** now, the url `account/persons/me` containing the proper access token in the request header will return the `core.User` and `account.Person` all together. 
