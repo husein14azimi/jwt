@@ -2,8 +2,6 @@
 <p align="center">
 IN THE NAME OF GOD
 </p>
-
-
 <br></br>
 
 # jwt project 💻
@@ -14,10 +12,14 @@ this is a simple django project with two web applications:
 
 > it is actually a template project for authenticating via jwt
 
-technologies used in the project:
+### technologies used in the project:
 * RESTful apis
 * (Authentication): `jwt` (as the authenticatoin backend) and `djoser` (for pre-written `views` and `urls`)
 * (dev environment:) Visual Studio Code on Windows
+
+### TO-DO list for the future:
+* create-new-user api endpoint
+* email validation implementation
 
 
 
@@ -437,24 +439,7 @@ class CombinedUserPersonSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'phone_number', 'date_joined', 'last_login', 'bio', 'birth_date', 'gender', 'updated_at',]
         read_only_fields = ['id', 'username', 'date_joined', 'last_login',]
-
-    def update(self, instance, validated_data):
-        person_data = {}
-        for field in ['bio', 'birth_date', 'gender']:
-            if field in validated_data:
-                person_data[field] = validated_data.pop(field)
-
-        super().update(instance, validated_data)
-
-        if person_data:
-            person = instance.person
-            for attr, value in person_data.items():
-                setattr(person, attr, value)
-            person.save()
-
-        return instance
 ```
-
 
 
 
@@ -469,14 +454,16 @@ from rest_framework.response import Response
 from .serializers import CombinedUserPersonSerializer
 from django.contrib.auth import get_user_model
 
-User = get_user_model()
-
+User  = get_user_model()
 
 class CombinedUserProfileViewSet(RetrieveModelMixin, UpdateModelMixin, viewsets.GenericViewSet):
     serializer_class = CombinedUserPersonSerializer
     
     def get_queryset(self):
-        return User.objects.all()
+        # Allow only the user or admin to access their profile
+        if self.request.user.is_staff:
+            return User.objects.all()
+        return User.objects.filter(id=self.request.user.id)
 
     @action(detail=False, methods=['get', 'put', 'patch'])
     def me(self, request):
@@ -487,11 +474,26 @@ class CombinedUserProfileViewSet(RetrieveModelMixin, UpdateModelMixin, viewsets.
         elif request.method in ['PUT', 'PATCH']:
             serializer = self.get_serializer(user, data=request.data, partial=request.method == 'PATCH')
             serializer.is_valid(raise_exception=True)
-            serializer.save()
+            self.update_user_profile(user, serializer.validated_data)
             return Response(serializer.data)
-```
 
-about the `me` action👆: this funtion returns the profile associated with the user model. therefore, the url `<site-address>/account/persons/me` returns the user's profile in a rest response.
+    def update_user_profile(self, user, validated_data):
+        # Handle nested person data
+        person_data = validated_data.pop('person', {})
+
+        # Update the user instance
+        user = super().update(user, validated_data)
+
+        # Update the person instance if it exists
+        person = user.person
+        if person_data:
+            for attr, value in person_data.items():
+                setattr(person, attr, value)
+            person.save()
+
+        return user
+```
+about the `me` action👆: this funtion returns the profile associated with the user model. therefore, the url `<site-address>/account/persons/me` returns the user's profile in a rest response. also, if the user is admin, he can see other profiles using `<site-address>/account/persons/<pk>` (this thing is done by the `get_queryset` method). this url also works if you own the profile with the `<pk>`.
 
 
 
@@ -594,13 +596,13 @@ congrats! you got yourself a jwt auth django project!
 
 a big thanks to the AIs that helped me in this project;
 
-perplexity.ai
+[blackbox.ai](https://www.blackbox.ai)
 
-blackbox.ai
+[perplexity.ai](https://www.perplexity.ai/)
 
 and
 
-chatgpt.com , copilot.microsoft.com (not quite a lot)
+chatgpt and copilot (not quite a lot)
 
 <br></br>
 <br></br>
@@ -608,3 +610,23 @@ chatgpt.com , copilot.microsoft.com (not quite a lot)
 
 
 this markdown text was created on https://markdownlivepreview.com/
+
+
+
+
+<!--
+> [!NOTE]
+> Useful information that users should know, even when skimming content.
+
+> [!TIP]
+> Helpful advice for doing things better or more easily.
+
+> [!IMPORTANT]
+> Key information users need to know to achieve their goal.
+
+> [!WARNING]
+> Urgent info that needs immediate user attention to avoid problems.
+
+> [!CAUTION]
+> Advises about risks or negative outcomes of certain actions.
+-->

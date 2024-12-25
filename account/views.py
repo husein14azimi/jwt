@@ -7,14 +7,16 @@ from rest_framework.response import Response
 from .serializers import CombinedUserPersonSerializer
 from django.contrib.auth import get_user_model
 
-User = get_user_model()
-
+User  = get_user_model()
 
 class CombinedUserProfileViewSet(RetrieveModelMixin, UpdateModelMixin, viewsets.GenericViewSet):
     serializer_class = CombinedUserPersonSerializer
     
     def get_queryset(self):
-        return User.objects.all()
+        # Allow only the user or admin to access their profile
+        if self.request.user.is_staff:
+            return User.objects.all()
+        return User.objects.filter(id=self.request.user.id)
 
     @action(detail=False, methods=['get', 'put', 'patch'])
     def me(self, request):
@@ -25,5 +27,21 @@ class CombinedUserProfileViewSet(RetrieveModelMixin, UpdateModelMixin, viewsets.
         elif request.method in ['PUT', 'PATCH']:
             serializer = self.get_serializer(user, data=request.data, partial=request.method == 'PATCH')
             serializer.is_valid(raise_exception=True)
-            serializer.save()
+            self.update_user_profile(user, serializer.validated_data)
             return Response(serializer.data)
+
+    def update_user_profile(self, user, validated_data):
+        # Handle nested person data
+        person_data = validated_data.pop('person', {})
+
+        # Update the user instance
+        user = super().update(user, validated_data)
+
+        # Update the person instance if it exists
+        person = user.person
+        if person_data:
+            for attr, value in person_data.items():
+                setattr(person, attr, value)
+            person.save()
+
+        return user
