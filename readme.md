@@ -458,6 +458,8 @@ User  = get_user_model()
 
 class CombinedUserProfileViewSet(RetrieveModelMixin, UpdateModelMixin, viewsets.GenericViewSet):
     serializer_class = CombinedUserPersonSerializer
+    # the permission is to prevent the error caused by anonymous user (that has no email) to enter the view.
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         # Allow only the user or admin to access their profile
@@ -577,7 +579,55 @@ congrats! you got yourself a jwt auth django project!
 
 
 
+## making the auth backend able to read the tokens from the cookies
 
+
+in the `account` app, create the `authentication.py`:
+```
+#account.authentication.py
+
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.exceptions import AuthenticationFailed
+
+class CookieJWTAuthentication(JWTAuthentication):
+    def authenticate(self, request):
+        # First, try to authenticate using the standard method (from headers)
+        auth_result = super().authenticate(request)
+
+        if auth_result is not None:
+            return auth_result
+
+        # If no authentication was found in headers, check cookies
+        token = request.COOKIES.get('jwt_access')
+        if not token:
+            return None  # No token found in cookies
+
+        # Validate the token
+        validated_token = self.get_validated_token(token)
+
+        return self.get_user(validated_token), validated_token
+```
+
+show/introduce this custom auth class to `djoser` in the project settings:
+```
+# core.settings
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'account.authentication.CookieJWTAuthentication',  # the custom cookie-reading authentication class
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Fallback to default
+    ),
+}
+```
+> [!NOTE]
+> the project still is checking the request headers. if you don't want it, you can remove it from the `REST_FRAMEWORK` settings.
+
+
+> [!NOTE]
+> the cookie containing the jwt access token must be named `jwt_access`. if you want to change it, modify it in the `account.authentication`. 
+
+> [!IMPORTANT]
+> this project does not set/save the cookie on the client (frontend can do it); therefore, if you want to test the implementation, you have to create the cookie manually.
 
 
 

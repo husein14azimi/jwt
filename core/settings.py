@@ -120,10 +120,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL= 'core.User'
 
 
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'account.authentication.CookieJWTAuthentication',  # the custom cookie-reading authentication class
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Fallback to default
     ),
 }
 
