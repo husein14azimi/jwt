@@ -23,6 +23,11 @@ this is a simple django project with two web applications:
 
 
 
+> [!IMPORTANT]
+> In this documentation, it is assumed that you are a django amateur or above. If you are a beginner, you can use AI chatbots to guide you through these steps.
+
+
+
 # creating this project, step by step:
 
 create a project named `core` and then rename the project to whatever you like. renaming the project is easier than renaming the main application of the project.
@@ -188,6 +193,9 @@ python manage.py migrate
 
 #### creating a superuser
 
+> [!CAUTION]
+> If you want to follow this documentation to the end, this action is not recommended because the `Person` model following has a one-to-one relationship with `core.User` and you'll have to delete the user instance manually.
+
 if in this step, the additional fields you have added to the `core.User` take part, then you have changed the *auth flow* successfully.
 ```
 python manage.py createsuperuser
@@ -238,10 +246,10 @@ therefore, there will be 3 steps:
 
 run:
 ```
-pip install djoser
-```
-```
 pip install djangorestframework_simplejwt
+```
+```
+pip install djoser
 ```
 
 register djoser as an app:
@@ -275,7 +283,10 @@ urlpatterns = [
 ]
 ```
 
-set jwt as the authenticatoin backend:
+set jwt as the authenticatoin backend (you can add this at the bottom of the `core.settings`) 👇:
+
+> [!NOTE]
+> this setting sets the jwt authentication to auth layers of rest framework. without this, I don't think rest framework has any default auth security 👇.
 
 ```
 # core.settings
@@ -288,6 +299,7 @@ REST_FRAMEWORK = {
 ```
 
 and add:
+
 ```
 # core.settings
 
@@ -295,6 +307,9 @@ SIMPLE_JWT = {
    'AUTH_HEADER_TYPES': ('JWT',),
 }
 ```
+
+> [!NOTE]
+> with the code snippet above 👆, we determine in what format the jwt auth headers should be.
 
 or if you want more customized settings:
 ```
@@ -309,18 +324,26 @@ SIMPLE_JWT = {
 }
 ```
 
-i just thought that access token must be valid for 3 days. you can change it there 👆.
+the expiration date is three days for access token and a month for refresh token. the timedelta import and use is required because jwt can't work with int.
 
 
 
 **map:** the `core.User` and auth configuration is implemented. now, we implement the `person`(profile) model.
 
-**note:** to get the current user's data, use the url `auth/users/me`.
-```
-localhost:8000/auth/users/me/
-```
 
-**note:** you can get your `access` and `refresh` tokens using the url `auth/jwt/create`. to refresh the access token, use the url `auth/jwt/refresh` along with your **refresh token**. 
+> [!NOTE]
+> to get/test the current user's data, use the following url. this url will return the data of the user in the django auth system (`core.User`).
+    ```
+    localhost:8000/auth/users/me/
+    ```
+
+
+
+> [!NOTE]
+> with the current implementation, djoser has three main urls:
+    1. `auth/jwt/verify` for verifying the access token,
+    2. `auth/jwt/refresh` for getting a new access token (you'll need to provide a valid refresh token) and
+    3. `auth/jwt/create` for getting a new pair of access and refesh tokens (providing the login credentials (i.e., **email** and **password**)).
 
 
 ## `account` app and `Person` (profile) model
@@ -451,6 +474,7 @@ from rest_framework import viewsets
 from rest_framework.mixins import RetrieveModelMixin, UpdateModelMixin
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from .serializers import CombinedUserPersonSerializer
 from django.contrib.auth import get_user_model
 
@@ -582,7 +606,7 @@ congrats! you got yourself a jwt auth django project!
 ## making the auth backend able to read the tokens from the cookies
 
 
-in the `account` app, create the `authentication.py`:
+in the `account` app, create the `authentication.py`. this module reads the jwt token from the request cookies. the cookie has two main fields: `key` and `value`. the key must be `'jwt_access'` (it is modifiable and you can change it in this module) and the value must be the access token. Here comes the module:
 ```
 #account.authentication.py
 
@@ -608,7 +632,7 @@ class CookieJWTAuthentication(JWTAuthentication):
         return self.get_user(validated_token), validated_token
 ```
 
-show/introduce this custom auth class to `djoser` in the project settings:
+add this layer of auth to the rest framework auth layers (currently it is just jwt-reading-from-the-header layer). the order matters, so when the cookie layer is above the header layer, the project will look for the jwt token in the request cookies.
 ```
 # core.settings
 
@@ -628,6 +652,9 @@ REST_FRAMEWORK = {
 
 > [!IMPORTANT]
 > this project does not set/save the cookie on the client (frontend can do it); therefore, if you want to test the implementation, you have to create the cookie manually.
+
+> [!IMPORTANT]
+> when retrieving a person model in the rest response (e.g. the `account/persons/me/` url), the `id` field is for the `core.User`, not the `account.Person`.
 
 
 
